@@ -15,8 +15,8 @@ defmodule TodoServer do
     send(:todo_server, {:add_entry, new_entry})
   end
 
-  def update_entry(todo_server, id) do
-    send(todo_server, {:update_entry, self, id})
+  def update_entry(entry_to_update) do
+    send(:todo_server, {:update_entry, self, entry_to_update})
     receive do
       {:todo_entries, entries} -> entries
     after 5000 ->
@@ -46,14 +46,16 @@ defmodule TodoServer do
     TodoList.add_entry(todo_list, new_entry)
   end
 
-  defp proccess_message(todo_list, {:update_entry, caller, id}) do
-    send(caller, {:todo_entries, TodoList.update_entry(todo_list, id)})
-    todo_list
+  defp proccess_message(todo_list, {:update_entry, caller, entry}) do
+    updated = TodoList.update_entry(todo_list, entry)
+    send(caller, {:todo_entries, updated})
+    updated
   end
 
   defp proccess_message(todo_list, {:delete_entry, caller, id}) do
-    send(caller, {:todo_entries, TodoList.delete_entry(todo_list, id)})
-    todo_list
+    deleted = TodoList.delete_entry(todo_list, id)
+    send(caller, {:todo_entries, deleted})
+    deleted
   end
 
   defp proccess_message(todo_list, {:entries, caller, date}) do
