@@ -1,6 +1,10 @@
 defmodule Todo.Cache do
   use GenServer
 
+  def start do
+    GenServer.start(__MODULE__, nil)
+  end
+
   def init(_) do
     Todo.Database.start("./persist/")
     {:ok, Map.new}
@@ -18,10 +22,6 @@ defmodule Todo.Cache do
           Map.put(todo_servers, todo_list_name, new_server)
         }
     end
-  end
-
-  def start do
-    GenServer.start(__MODULE__, nil)
   end
 
   def server_process(cache_pid, todo_list_name) do
