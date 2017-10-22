@@ -2,48 +2,47 @@ defmodule Todo.Database do
   use GenServer
 
   def start(db_folder) do
-    GenServer.start(__MODULE__, db_folder, name: __MODULE__)
+    GenServer.start(__MODULE__, db_folder, name: :database_server)
   end
 
   def store(key, data) do
-    GenServer.cast(__MODULE__, {:store, key, data})
+    key
+    |> choose_worker
+    |> Todo.Worker.store(key, data)
   end
 
   def get(key) do
-    GenServer.call(__MODULE__, {:get, key})
+    key
+    |> choose_worker
+    |> Todo.Worker.get(key)
+  end
+
+  defp choose_worker(key) do
+    GenServer.call(:database_server, {:choose_worker, key})
   end
 
   def init(db_folder) do
-    workers = 0..2
-              |> Enum.map(&(start_worker(&1, db_folder)))
-              |> Enum.into(%{})
-
-
-    {:ok, workers}
+    {:ok, start_workers(db_folder)}
   end
 
-  def handle_info({:workers, caller}, workers) do
-    send(caller, {:workers, workers})
-    {:noreply, workers}
+  defp start_workers(db_folder) do
+    for index <- 1..3, into: Map.new do
+      {:ok, pid} = Todo.Worker.start(db_folder)
+      {index - 1, pid}
+    end
   end
 
-  def handle_cast({:store, key, data}, workers) do
-    Todo.Worker.store(get_worker(workers, key), key, data)
-    {:noreply, workers}
+  def handle_call({:choose_worker, key}, _, workers) do
+    worker_key = :erlang.phash2(key, 3)
+    {:reply, Map.get(workers, worker_key), workers}
   end
 
-  def handle_call({:get, key}, caller, workers) do
+  def handle_info(:stop, workers) do
+    workers
+    |> Map.values
+    |> Enum.each(&send(&1, :stop))
 
-    Todo.Worker.get(get_worker(workers, key), key, caller)
-    {:noreply, workers}
+    {:stop, :normal, Map.new}
   end
-
-  defp start_worker(index, db_folder) do
-    {:ok, worker_pid} = Todo.Worker.start(db_folder)
-    {index, worker_pid}
-  end
-
-  defp get_worker(workers, key) do
-    Map.get(workers, :erlang.phash2(key, 3))
-  end
+  def handle_info(_, state), do: {:noreply, state}
 end
