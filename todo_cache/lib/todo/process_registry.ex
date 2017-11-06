@@ -42,7 +42,7 @@ defmodule Todo.ProcessRegistry do
     }
   end
 
-  def handle_call({:DOWN, _, :process, pid, _}, process_registry) do
+  def handle_info({:DOWN, _, :process, pid, _}, process_registry) do
     {:noreply, deregister_pid(process_registry, pid)}
   end
 
