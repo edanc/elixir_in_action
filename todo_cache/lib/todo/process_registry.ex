@@ -3,7 +3,8 @@ defmodule Todo.ProcessRegistry do
   import Kernel, except: [send: 2]
 
   def init(_) do
-    {:ok, Map.new}
+    :ets.new(:process_registry, [:named_table, :protected, :set])
+    {:ok, nil}
   end
 
   def start_link do
@@ -24,14 +25,23 @@ defmodule Todo.ProcessRegistry do
     GenServer.call(:process_registry, {:register_name, key, pid})
   end
 
-  def handle_call({:register_name, key, pid}, _, process_registry) do
-    case Map.get(process_registry, key) do
-      nil ->
-        Process.monitor(pid)
-        {:reply, :yes, Map.put(process_registry, key, pid)}
-      _ ->
-        {:reply, :no, process_registry}
+  def unregister_name(key) do
+    GenServer.call(:process_registry, {:unregister_name, key})
+  end
+
+  def handle_call({:register_name, key, pid}, _, state) do
+    if whereis_name(key) != :undefined do
+      {:reply, :no, state}
+    else
+      Process.monitor(pid)
+      :ets.insert(:process_registry, {key, pid})
+      {:reply, :yes, state}
     end
+  end
+
+  def handle_call({:unregister_name, key}, _, state) do
+    :ets.delete(:process_registry, key)
+    {:reply, key, state}
   end
 
   def handle_call({:whereis_name, key}, _, process_registry) do
@@ -42,24 +52,15 @@ defmodule Todo.ProcessRegistry do
     }
   end
 
-  def handle_info({:DOWN, _, :process, pid, _}, process_registry) do
-    {:noreply, deregister_pid(process_registry, pid)}
+  def handle_info({:DOWN, _, :process, terminated_pid, _}, state) do
+    :ets.match_delete(:process_registry, {:_, terminated_pid})
+    {:noreply, state}
   end
 
   def whereis_name(key) do
-    GenServer.call(:process_registry, {:whereis_name, key})
-  end
-
-  defp deregister_pid(process_registry, pid) do
-    Enum.reduce(
-      process_registry,
-      process_registry,
-      fn
-        ({registered_alias, registered_process}, registry_acc) when registered_process == pid ->
-          Map.delete(registry_acc, registered_alias)
-
-        (_, registry_acc) -> registry_acc
-      end
-    )
+    case :ets.lookup(:process_registry, key) do
+      [{^key, pid}] -> pid;
+      _ -> :undefined
+    end
   end
 end
