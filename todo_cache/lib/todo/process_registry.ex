@@ -44,14 +44,6 @@ defmodule Todo.ProcessRegistry do
     {:reply, key, state}
   end
 
-  def handle_call({:whereis_name, key}, _, process_registry) do
-    {
-      :reply,
-      Map.get(process_registry, key, :undefined),
-      process_registry
-    }
-  end
-
   def handle_info({:DOWN, _, :process, terminated_pid, _}, state) do
     :ets.match_delete(:process_registry, {:_, terminated_pid})
     {:noreply, state}
