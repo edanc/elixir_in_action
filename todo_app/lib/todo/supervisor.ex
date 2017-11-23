@@ -3,7 +3,6 @@ defmodule Todo.Supervisor do
 
   def init(_) do
     processes = [
-      worker(Todo.ProcessRegistry, []),
       supervisor(Todo.SystemSupervisor,[])
     ]
     supervise(processes, strategy: :rest_for_one)
