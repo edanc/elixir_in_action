@@ -16,24 +16,18 @@ defmodule Todo.Mixfile do
   def application do
     # Specify extra applications you'll use from Erlang/Elixir
     [
-      extra_applications: [:logger, :gproc],
+      applications: [:logger, :gproc, :cowboy, :plug],
       mod: {Todo.Application, []}
     ]
   end
 
-  # Dependencies can be Hex packages:
-  #
-  #   {:my_dep, "~> 0.3.0"}
-  #
-  # Or git/path repositories:
-  #
-  #   {:my_dep, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
-  #
-  # Type "mix help deps" for more examples and options
   defp deps do
     [
       {:gproc, "0.3.1"},
-      {:meck, "0.8.2", only: :test}
+      {:cowboy, "1.0.0"},
+      {:plug, "1.0.0"},
+      {:meck, "0.8.2", only: :test},
+      {:httpoison, "0.4.3", only: :test}
     ]
   end
 end
